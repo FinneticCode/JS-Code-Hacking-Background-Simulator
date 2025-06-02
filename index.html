@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Password Eingabe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Grundeinstellungen */
+    body {
+      background-color: black;
+      color: #39FF14;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      position: relative;
+    }
+
+    canvas {
+      display: relative;
+      position: absolute;
+    }
+    .container {
+      display: flex;
+      position: absolute;
+      flex-direction: column; /* Elemente untereinander anordnen */
+      align-items: center;
+      text-align: center;
+    }
+    label {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+    /* Passwortfeld – maskiert */
+    input[type="password"] {
+      background-color: black;
+      text-align: center;
+      border: 2px solid #39FF14;
+      color: #39FF14;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      outline: none;
+      margin-bottom: 20px;
+      width: 250px;
+      animation: neonPulseGreen 1.5s infinite alternate;
+    }
+
+     @keyframes neonPulseGreen {
+      0% { box-shadow: 0 0 5px #00ff00; }
+      50% { box-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00; }
+      100% { box-shadow: 0 0 5px #00ff00; }
+    }
+
+    @keyframes neonPulseRed {
+      0% { box-shadow: 0 0 5px red; }
+      50% { box-shadow: 0 0 20px red, 0 0 30px red; }
+      100% { box-shadow: 0 0 5px red; }
+    }
+    /* Read-only Display-Feld */
+    input[type="text"] {
+      background-color: black;
+      text-align: center;
+      border: 2px solid #39FF14;
+      color: #39FF14;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      outline: none;
+      margin-bottom: 20px;
+      width: 250px;
+      animation: neonPulseGreen 1.5s infinite alternate;
+    }
+
+    input:focus {
+      outline: none;
+    }
+
+    button {
+      background-color: black;
+      border: 2px solid #39FF14;
+      color: #39FF14;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s, color 0.3s;
+      margin-bottom: 20px;
+      animation: neonPulseGreen 1.5s infinite alternate;
+    }
+    button:hover {
+      background-color: #39FF14;
+      color: black;
+    }
+    
+    /* Fixierter Button in der unteren rechten Ecke */
+    #passwordCreateButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+    }
+    /* Pop-ups */
+    #popupRight {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #39FF14;
+      padding: 20px 40px;
+      background-color: black;
+      color: #39FF14;
+      font-size: 24px;
+      border-radius: 8px;
+      z-index: 999;
+    }
+    #popupWrong {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #FF0000;
+      padding: 20px 40px;
+      background-color: black;
+      color: #FF0000;
+      font-size: 24px;
+      border-radius: 8px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  
+  <canvas id="matrixCanvas"></canvas>
+
+  <div class="container">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" placeholder="Password">
+    <input type="text" id="display" name="display" placeholder="" readonly>
+    <button id="startButton" type="button">Go</button>
+    <button id="checkButton" type="button">Check</button>
+  </div>
+
+
+  
+  <button id="passwordCreateButton" type="button">Password Creat</button>
+  
+  <div id="popupRight">Right <span class="lock">🔓</span></div>
+  <div id="popupWrong">Wrong <span class="lock">🔒</span></div>
+  
+  <script>
+    
+    
+    
+    const passwordField = document.getElementById("password");
+    const displayField = document.getElementById("display");
+    const startButton = document.getElementById("startButton");
+    const checkButton = document.getElementById("checkButton");
+    const passwordCreateButton = document.getElementById("passwordCreateButton");
+    const popupRight = document.getElementById("popupRight");
+    const popupWrong = document.getElementById("popupWrong");
+
+    startButton.addEventListener("click", function() {
+      displayField.value = "";
+      const storedPassword = localStorage.getItem("storedPassword");
+      if (!storedPassword) {
+        const alphabet = "abcdefghijklmnopqrstuvwxyz";
+        let index = 0;
+        setInterval(() => {
+          displayField.value = alphabet[index];
+          index = (index + 1) % alphabet.length;
+        }, 100);
+        return;
+      }
+
+      const targetPassword = storedPassword;
+      let currentResult = "";
+      let pos = 0;
+
+      const lowercase = "abcdefghijklmnopqrstuvwxyz";
+      const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const numbers = "0123456789";
+      const symbols = "!@#$%^&*()-_=+{}[];:'\",.<>?/|\\`";
+
+      function animateNextLetter() {
+        if (pos >= targetPassword.length) return;
+        const targetLetter = targetPassword.charAt(pos);
+        animatePhase(lowercase, targetLetter, function(success) {
+          if (success) {
+            currentResult += targetLetter;
+            displayField.value = currentResult;
+            pos++;
+            animateNextLetter();
+          } else {
+            animatePhase(uppercase, targetLetter, function(successUpper) {
+              if (successUpper) {
+                currentResult += targetLetter;
+                displayField.value = currentResult;
+                pos++;
+                animateNextLetter();
+              } else {
+                animatePhase(numbers, targetLetter, function(successNumber) {
+                  if (successNumber) {
+                    currentResult += targetLetter;
+                    displayField.value = currentResult;
+                    pos++;
+                    animateNextLetter();
+                  } else {
+                    animatePhase(symbols, targetLetter, function(successSymbol) {
+                      if (successSymbol) {
+                        currentResult += targetLetter;
+                        displayField.value = currentResult;
+                        pos++;
+                        animateNextLetter();
+                      } else {
+                        pos++;
+                        animateNextLetter();
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
+      function animatePhase(letterSet, targetLetter, callback) {
+        let index = 0;
+        const interval = setInterval(() => {
+          const currentLetter = letterSet.charAt(index);
+          displayField.value = currentResult + currentLetter;
+          if (currentLetter === targetLetter) {
+            clearInterval(interval);
+            callback(true);
+          } else {
+            index++;
+            if (index >= letterSet.length) {
+              clearInterval(interval);
+              callback(false);
+            }
+          }
+        }, 100);
+      }
+
+      animateNextLetter();
+    });
+
+    checkButton.addEventListener("click", function() {
+      popupRight.style.display = "none";
+      popupWrong.style.display = "none";
+
+      if (passwordField.value === localStorage.getItem("storedPassword")) {
+        popupRight.style.display = "block";
+        setTimeout(() => { popupRight.style.display = "none"; }, 3000);
+      } else {
+        popupWrong.style.display = "block";
+        setTimeout(() => { popupWrong.style.display = "none"; }, 3000);
+      }
+    });
+
+    passwordCreateButton.addEventListener("click", function() {
+      window.location.href = "generate.html";
+    });
+
+     const canvas = document.getElementById("matrixCanvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*";
+    const matrix = letters.split("");
+
+    const fontSize = 16;
+    const columns = canvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#39FF14";
+      ctx.font = fontSize + "px monospace";
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = matrix[Math.floor(Math.random() * matrix.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    setInterval(drawMatrix, 50);
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+    
+  </script>
+</body>
+</html>
